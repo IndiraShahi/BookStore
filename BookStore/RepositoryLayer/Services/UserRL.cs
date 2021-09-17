@@ -1,7 +1,9 @@
-﻿using CommonLayer.Models;
+﻿using CommonLayer;
+using CommonLayer.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using RepositoryLayer.Interfaces;
+using RepositoryLayer.MSMQServices;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -15,11 +17,11 @@ namespace RepositoryLayer.Services
     public class UserRL : IUserRL
     {
         private readonly string connection;
-        private readonly string secretkey;
+        private readonly string secretKey;
         public UserRL(IConfiguration configuration)
         {
             connection = configuration.GetSection("ConnectionStrings").GetSection("OnlineBookStore").Value; 
-            secretkey = configuration.GetSection("AppSettings").GetSection("Key").Value;
+            secretKey = configuration.GetSection("AppSettings").GetSection("Key").Value;
         }
         private const string spQuery = "spUserRegister";
 
@@ -92,17 +94,45 @@ namespace RepositoryLayer.Services
                 sqlConnection.Close();
             }
         }
-        public string GenerateToken(string Email, int UserId, string Roles)
+        private const string updateQuery = "spResetPassword";
+        public bool ResetPassword(ResetPassword reset, int userId)
+        {
+            SqlConnection sqlconnection = new SqlConnection(connection);
+            try
+            {
+                int rows;
+                using (sqlconnection)
+                {
+                    sqlconnection.Open();
+                    SqlCommand command = new SqlCommand(updateQuery, sqlconnection);
+                    command.CommandType = CommandType.StoredProcedure;
+                    command.Parameters.AddWithValue("@UserId", userId);
+                    command.Parameters.AddWithValue("@Password", reset.NewPassword);
+                    rows = command.ExecuteNonQuery();
+                }
+                return (rows > 0 ? true : false);
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            finally
+            {
+                sqlconnection.Close();
+            }
+        }
+        public string GenerateToken(string Email, int userId, string role)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(secretkey);
+            var key = Encoding.ASCII.GetBytes(secretKey);
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new Claim[]
                 {
                     new Claim(ClaimTypes.Email, Email),
-                    new Claim("UserId", UserId.ToString(), ClaimValueTypes.Integer),
-                    new Claim(ClaimTypes.Role, Roles)
+                    new Claim("userId", userId.ToString(), ClaimValueTypes.Integer),
+                    new Claim(ClaimTypes.Role, role)
                 }),
                 Expires = DateTime.UtcNow.AddDays(2),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
@@ -110,6 +140,54 @@ namespace RepositoryLayer.Services
             var token = tokenHandler.CreateToken(tokenDescriptor);
             string jwtToken = tokenHandler.WriteToken(token);
             return jwtToken;
+        }
+        private const string _forgetPasswordQuery = "spForgetPassword";
+        public bool ForgetPassword(string email)
+        {
+            SqlConnection sqlconnection = new SqlConnection(connection);
+            try
+            {
+                using (sqlconnection)
+                {
+                    sqlconnection.Open();
+                    SqlCommand command = new SqlCommand(_forgetPasswordQuery, sqlconnection);
+                    command.CommandType = CommandType.StoredProcedure;
+                    command.Parameters.AddWithValue("@email", email);
+
+                    SqlDataReader reader = command.ExecuteReader();
+                    if (reader.HasRows)
+                    {
+                        User user = new User();
+                        while (reader.Read())
+                        {
+                            user.UserId = reader.GetInt32(0);
+                            user.FullName = reader.GetString(1);
+                            user.Email = reader.GetString(2);
+                            user.Password = reader.GetString(3);
+                            user.MobileNumber = reader.GetInt64(4);
+                            user.Roles = reader.GetString(5);
+                        }
+                        if (user != null)
+                        {
+                            string token = GenerateToken(user.Email, user.UserId, user.Roles);
+                            MSMQUtility mSMQ = new MSMQUtility();
+                            mSMQ.SendMessage(email, token);
+
+                            return true;
+                        }
+                        return false;
+                    }
+                    return false;
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+            finally
+            {
+                sqlconnection.Close();
+            }
         }
     }
 }
