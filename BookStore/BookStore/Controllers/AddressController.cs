@@ -8,11 +8,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace BookStore.Controllers
 {
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "users")]
+
     [Route("api/[controller]")]
     [ApiController]
     public class AddressController : ControllerBase
@@ -34,7 +36,8 @@ namespace BookStore.Controllers
         {
             try
             {
-                int userId = GetIdFromToken();
+                ClaimsPrincipal principal = HttpContext.User as ClaimsPrincipal;
+                int userId = Convert.ToInt32(principal.Claims.SingleOrDefault(c => c.Type == "UserId").Value);
 
                 var newAddress = _addressBL.AddNewAddress(userId, address);
 
@@ -55,7 +58,8 @@ namespace BookStore.Controllers
         {
             try
             {
-                int userId = GetIdFromToken();
+                ClaimsPrincipal principal = HttpContext.User as ClaimsPrincipal;
+                int userId = Convert.ToInt32(principal.Claims.SingleOrDefault(c => c.Type == "UserId").Value);
                 var addresses = _addressBL.GetAllAddress(userId);
 
                 if (addresses.Count != 0)
