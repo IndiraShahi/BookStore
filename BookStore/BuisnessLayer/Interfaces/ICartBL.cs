@@ -1,10 +1,12 @@
-﻿using System;
+﻿using CommonLayer.Models;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace BuisnessLayer.Interfaces
 {
-    interface ICartBL
+    public interface ICartBL
     {
+        bool AddToCart(Cart cart, int userId);
     }
 }

@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace BookStore.Controllers
@@ -36,8 +35,7 @@ namespace BookStore.Controllers
         {
             try
             {
-                ClaimsPrincipal principal = HttpContext.User as ClaimsPrincipal;
-                int userId = Convert.ToInt32(principal.Claims.SingleOrDefault(c => c.Type == "UserId").Value);
+                int userId = GetIdFromToken();
 
                 var newAddress = _addressBL.AddNewAddress(userId, address);
 
@@ -58,8 +56,7 @@ namespace BookStore.Controllers
         {
             try
             {
-                ClaimsPrincipal principal = HttpContext.User as ClaimsPrincipal;
-                int userId = Convert.ToInt32(principal.Claims.SingleOrDefault(c => c.Type == "UserId").Value);
+                int userId = GetIdFromToken();
                 var addresses = _addressBL.GetAllAddress(userId);
 
                 if (addresses.Count != 0)
