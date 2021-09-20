@@ -1,4 +1,5 @@
 ﻿using BuisnessLayer.Interfaces;
+using CommonLayer;
 using CommonLayer.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -40,6 +41,32 @@ namespace BookStore.Controllers
             catch (Exception ex)
             {
                 return NotFound(new { success = false, message = ex.Message });
+            }
+        }
+        [HttpDelete]
+        public IActionResult DeleteCart(int cartId)
+        {
+            string message;
+            try
+            {
+                int userId = Convert.ToInt32(User.FindFirst(x => x.Type == "userId").Value);
+                CartRequest cart = new CartRequest
+                {
+                    CartId = cartId
+                };
+                bool result = _cartBL.DeleteCart(cart);
+                if (result)
+                {
+                    message = "Successfully deleted cart details";
+                    return this.Ok(new { message });
+                }
+                message = "Cart id is not match with our database.Please give correct bookId.";
+                return BadRequest(new { message });
+            }
+            catch (Exception ex)
+            {
+
+                return this.BadRequest(new { Success = false, Message = ex.Message, StackTrace = ex.StackTrace });
             }
         }
     }

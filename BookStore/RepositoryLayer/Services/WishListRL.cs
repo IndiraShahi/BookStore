@@ -1,5 +1,4 @@
-﻿using CommonLayer;
-using CommonLayer.Models;
+﻿using CommonLayer.Models;
 using Microsoft.Extensions.Configuration;
 using RepositoryLayer.Interfaces;
 using System;
@@ -10,15 +9,15 @@ using System.Text;
 
 namespace RepositoryLayer.Services
 {
-    public class CartRL : ICartRL
+    public class WishListRL : IWishListRL
     {
         private readonly string _connectionString;
-        public CartRL(IConfiguration config)
+        public WishListRL(IConfiguration config)
         {
             _connectionString = config.GetSection("ConnectionStrings").GetSection("OnlineBookStore").Value;
         }
 
-        public bool AddToCart(Cart cart, int userId)
+        public bool AddToWishlist(Wishlist wishlist, int UserId)
         {
             SqlConnection connection = new SqlConnection(_connectionString);
             try
@@ -27,10 +26,10 @@ namespace RepositoryLayer.Services
                 using (connection)
                 {
                     connection.Open();
-                    SqlCommand command = new SqlCommand("spAddToCart", connection);
+                    SqlCommand command = new SqlCommand("spAddToWishlist", connection);
                     command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("@UserId", userId);
-                    command.Parameters.AddWithValue("@bookId", cart.BookId);
+                    command.Parameters.AddWithValue("@userId", UserId);
+                    command.Parameters.AddWithValue("@book_id", wishlist.BookId);
                     rows = command.ExecuteNonQuery();
                 }
                 return (rows > 0 ? true : false);
@@ -44,32 +43,25 @@ namespace RepositoryLayer.Services
                 connection.Close();
             }
         }
-        public bool DeleteCart(CartRequest cart)
+
+        public bool RemoveFromWishlist(int wishlistId, int UserId)
         {
             SqlConnection connection = new SqlConnection(_connectionString);
             try
             {
+                int rows;
                 using (connection)
                 {
-                    // Implementing the stored procedure
-                    SqlCommand command = new SqlCommand("spDeleteFromCart", connection);
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("@card_id", cart.CartId);
                     connection.Open();
-                    var result = command.ExecuteNonQuery();
-                    connection.Close();
-                    //Return the result of the transaction 
-
-                    if (result != 0)
-                    {
-                        return true;
-                    }
-                    return false;
+                    SqlCommand command = new SqlCommand("spRemoveFromWishlist", connection);
+                    command.CommandType = CommandType.StoredProcedure;
+                    command.Parameters.AddWithValue("@wishlist_id", wishlistId);
+                    rows = command.ExecuteNonQuery();
                 }
+                return (rows > 0 ? true : false);
             }
-            catch
+            catch (Exception)
             {
-
                 throw;
             }
             finally
@@ -78,5 +70,4 @@ namespace RepositoryLayer.Services
             }
         }
     }
-
 }

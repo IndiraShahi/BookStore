@@ -1,4 +1,5 @@
 ﻿using BuisnessLayer.Interfaces;
+using CommonLayer;
 using CommonLayer.Models;
 using RepositoryLayer.Interfaces;
 using System;
@@ -26,5 +27,10 @@ namespace BuisnessLayer.Services
                 throw;
             }
         }
+        public bool DeleteCart(CartRequest cart)
+        {
+            return this._cartRL.DeleteCart(cart);
+        }
+
     }
 }
